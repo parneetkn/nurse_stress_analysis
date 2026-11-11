@@ -1,7 +1,7 @@
 # Nurse stress and wearable signals (R)
 
 Analysis of the Nurse Stress Dataset (Empatica E4): do wrist-worn signals flag
-reported stress in hospital nurses? Full write-up: `docs/Nurse_Stress_Analysis_Documentation.pdf`.
+reported stress in hospital nurses? 
 
 ## Requirements
 - R 4.3 or later, RStudio (optional)
