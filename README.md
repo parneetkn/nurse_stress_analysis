@@ -40,5 +40,5 @@ All figures are saved in the [`outputs/`](outputs/) folder, so you can view them
 | `outputs/model_odds_ratios.csv` | The model's odds ratios and confidence intervals as a table |
 
 ## Documentation and presentation
-A detailed documentation.md file and ppt are saved in the [`docs/`](docs/) folder.
-The .md file has information about data processing, analysis, statistical tests, inference, limitations, assumptions. The ppt is a short overall result of the same.
+A detailed README_documentation.md file, a report file and ppt are saved in the [`docs/`](docs/) folder.
+The .md file has detailed information about data processing, analysis, statistical tests, inference, limitations, assumptions. The ppt is a short overall result of the same.
