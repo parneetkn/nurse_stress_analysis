@@ -28,7 +28,7 @@ are worth testing.
 | Variance explained | marginal R2 0.046, conditional R2 0.211, adjusted ICC 0.172 |
 
 ### Visualisations
-All figures are saved in the [`outputs/`](outputs/) folder and committed to the repository, so you can view them without running any code.
+All figures are saved in the outputs/ folder and committed to the repository, so you can view them without running any code.
 
 ## 3. Repository layout
 ```
@@ -167,7 +167,6 @@ EDA_phasic   -0.10  0.02 -0.09    0.04    0.05       1.00      0.91        -0.04
 EDA_slope    -0.10  0.01 -0.09    0.04    0.04       0.91      1.00        -0.04
 stress_level  0.07 -0.03  0.13    0.07   -0.07      -0.04     -0.04         1.00
 ```
-<img src="outputs/heatmap.png" alt="Spearman correlation heatmap" width="560">
 
 ### Step 5: `stats.R` (Part 4, statistical analysis)
 Mixed-effects logistic regression on 214 survey windows with a random intercept for nurse, followed by assumption checks. Writes `outputs/model_odds_ratios.csv` and `outputs/forest_plot.png`.
@@ -211,7 +210,6 @@ Warning: About 80% of the residuals are inside the error bounds (~95% or higher 
 ```
 The `hatvalues` warnings that follow are expected: the hat matrix is not valid for mixed logistic models, so the outlier check is not acted on.
 
-<img src="outputs/forest_plot.png" alt="Forest plot of odds ratios per 1 SD" width="560">
 
 ### Step 6: `plots_branded.R` (optional)
 Redraws the heatmap and forest plot with plain-language labels and the project colours. It prints nothing; check `outputs/heatmap_branded.png` and `outputs/forest_branded.png` (shown in the Visualisations section above).
