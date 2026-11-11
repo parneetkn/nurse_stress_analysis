@@ -76,19 +76,9 @@ nurse_stress_analysis/
 ```r
 source("run_all.R")
 ```
-It installs missing packages, runs the six scripts in order (each in its own environment), then knits `report.Rmd` to `report.html`.
+It installs missing packages, runs the six scripts in order (each in its own environment).
 
-**Or step by step.** Run each script from the project root with `source("<script>")`. Under each step is the output you should see, trimmed for length (timestamps and warnings will differ slightly).
-
-| Step | Script | Writes |
-|---|---|---|
-| 1 | `data_loading.R` | `outputs/dat_raw_1hz.rds`, `outputs/survey_parsed.rds` |
-| 2 | `data_quality.R` | `outputs/dat_clean.rds` |
-| 3 | `features.R` | `outputs/dat_features.rds`, `outputs/epoch_1min.rds` |
-| 4 | `correlation.R` | `outputs/heatmap.png` |
-| 5 | `stats.R` | `outputs/model_odds_ratios.csv`, `outputs/forest_plot.png` |
-| 6 | `plots_branded.R` (optional) | `outputs/heatmap_branded.png`, `outputs/forest_branded.png` |
-| 7 | `rmarkdown::render("report.Rmd")` | `report.html` |
+## Details of each step in the pipeline 'run_all.R': 
 
 ### Step 1: `data_loading.R` (Part 1, ingestion and integration)
 Unzips the 609 session files, averages each signal to 1 Hz, merges them on the Unix second, converts survey times from America/Chicago to UTC and attaches each survey's stress level to the sensor seconds inside its window.
@@ -213,15 +203,8 @@ Redraws the heatmap and forest plot with plain-language labels and the project c
 
 ### Step 7: `rmarkdown::render("report.Rmd")`
 Note: I am excluding this step, as I have already provided a detailed documentation and a report file.
-Knits the report with the data quality table, both figures, the odds-ratio table and the appendices.
-```
-processing file: report.Rmd
-output file: report.knit.md
-...
-Output created: report.html
-```
-Open `report.html` in a browser.
 
+Also,
 `00_inspect.R` and `01b_clock_check.R` are diagnostics and are not part of the pipeline. `01b_clock_check.R` was run on survey times assumed to be UTC; re-running it now, on the converted times, should show the best offset as 0.
 
 **How to verify a run.** The console should show: 4,505,058 rows after de-duplication; labelled rows 7.9%; 31 survey rows with no labelled seconds out of 245; the epoch table 1,164 / 420 / 4,568 / 69,535 (levels 0, 1, 2, unlabelled); model counts 53 / 161; EDA odds ratio 1.36; marginal R2 0.046; ICC 0.172.
@@ -233,7 +216,6 @@ Open `report.html` in a browser.
 | `Run from the project root` | Set the working directory to the project folder. |
 | `there is no package called 'digest'` | Run `install.packages("digest")`, then `install.packages("broom.mixed")`. |
 | Report fails with "Cannot find the file(s)" | Run `run_all.R` (or `stats.R` and `correlation.R`) first so `outputs/` has the plots and CSV; knit from the project root. |
-| PDF knit asks for LaTeX | Knit to HTML (the default) and print to PDF from a browser. |
 | Warnings about `hatvalues`, `max(gap)` or "built under R 4.4.3" | Expected and harmless (hat matrix is not valid for mixed logistic models; the gap table is empty by design). |
 
 ## 8. Data dictionary: full forms and units
