@@ -29,3 +29,16 @@ reported stress in hospital nurses?
 | 6 | plots_branded.R (optional) | outputs/*_branded.png |
 | 7 | rmarkdown::render("report.Rmd") | report.html |
 
+## Visualizations
+All figures are saved in the [`outputs/`](outputs/) folder, so you can view them on GitHub without running any code. Click a file to open it.
+
+| File | What it shows |
+|---|---|
+| `outputs/heatmap_branded.png` | Spearman correlation of the wearable signals, derived features and reported stress |
+| `outputs/forest_branded.png` | Odds of a high-stress period per 1 SD increase in each measure, with 95% confidence intervals |
+| `outputs/heatmap.png`, `outputs/forest_plot.png` | The same two plots in the plain default style, written by `correlation.R` and `stats.R` |
+| `outputs/model_odds_ratios.csv` | The model's odds ratios and confidence intervals as a table |
+
+![Correlation heatmap](outputs/heatmap_branded.png)
+
+![Forest plot of odds ratios](outputs/forest_branded.png)
