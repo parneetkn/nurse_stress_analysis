@@ -29,5 +29,3 @@ reported stress in hospital nurses? Full write-up: `docs/Nurse_Stress_Analysis_D
 | 6 | plots_branded.R (optional) | outputs/*_branded.png |
 | 7 | rmarkdown::render("report.Rmd") | report.html |
 
-## Key assumptions and limitations
-See the Assumptions and Limitations sections in `docs/` (and the sections below).
