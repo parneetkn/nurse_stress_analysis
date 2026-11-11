@@ -39,6 +39,6 @@ All figures are saved in the [`outputs/`](outputs/) folder, so you can view them
 | `outputs/heatmap.png`, `outputs/forest_plot.png` | The same two plots in the plain default style, written by `correlation.R` and `stats.R` |
 | `outputs/model_odds_ratios.csv` | The model's odds ratios and confidence intervals as a table |
 
-## Documentation and presentation
+## Documentation and presentation deliverables
 A detailed README_documentation.md file, a report file and ppt are saved in the [`docs/`](docs/) folder.
 The .md file has detailed information about data processing, analysis, statistical tests, inference, limitations, assumptions. The ppt is a short overall result of the same. The report file follows the assessment questionnaire structure to give an easy to read summary of the analysis.
