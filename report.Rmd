@@ -1,0 +1,233 @@
+---
+title: "Can wearable signals flag nurse stress? Findings from the Nurse Stress Dataset"
+subtitle: "Data Analyst (R) technical assessment"
+output:
+  html_document:
+    toc: false
+    theme: default
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, out.width = "92%", fig.align = "center")
+library(knitr)
+BASE <- "."    # change if your nurse_data folder is elsewhere
+OUTD <- file.path(BASE, "outputs")
+# use branded plots if plots_branded.R has been run, otherwise the originals
+pick <- function(a, b) if (file.exists(file.path(OUTD, a))) file.path(OUTD, a) else file.path(OUTD, b)
+```
+
+## Summary
+
+Wrist-worn Empatica E4 data from 15 hospital nurses (609 session files, about 1,250 hours) were matched to the stress level each nurse reported for specific work periods. **After allowing for which nurse was recording, average skin conductance, heart rate, skin temperature and movement did not reliably separate high-stress from lower-stress periods.** Differences between nurses mattered more than differences in the signals. A wrist band alone is therefore a weak stress marker; personalised baselines are worth testing.
+
+## Data and methods
+
+**Signals and units.**
+
+```{r dict}
+dict <- data.frame(
+  Name = c("EDA", "HR", "TEMP", "ACC (acc_mag)", "Stress level"),
+  `Full name` = c("Electrodermal activity (skin conductance)", "Heart rate", "Skin temperature",
+                  "Accelerometer movement magnitude", "Stress level reported by the nurse"),
+  Unit = c("microsiemens (uS)", "beats per minute (bpm)", "degrees Celsius", "g (converted from raw counts)", "0, 1, 2"),
+  `Native rate` = c("4 Hz", "1 Hz", "4 Hz", "32 Hz", "one value per survey window"),
+  check.names = FALSE)
+kable(dict)
+```
+
+Blood volume pulse (BVP), inter-beat interval (IBI) and button tags were not used. The participant called "E4" is a nurse ID and not the wristband.
+
+**File structure.** Each nurse has a folder of session zips. Each zip holds `EDA`, `HR`, `TEMP` and `ACC` CSVs where line 1 is the Unix start time, line 2 the sample rate and the rest the data. `SurveyResults.xlsx` has one row per reported period: nurse ID, start and end time, date and a stress level (0, 1 or 2).
+
+**Merging.** Every signal was averaged to 1 Hz (whole-second means) and outer-merged on the Unix second; the HR file starts 10 s later than the others. Each sensor second inherited the stress level of the survey window containing it (nurse ID plus start and end time, inclusive). Survey times are local hospital time, converted from `America/Chicago` to UTC after testing hourly offsets per nurse (see Appendix A9).
+
+**Derived features.** `HR_sd60` (heart rate fluctuation: standard deviation over 60 s, a short-term proxy and not clinical heart rate variability), `EDA_phasic` (EDA minus its trailing 30 s mean, a fast-arousal proxy), `EDA_slope` (EDA change per second over 10 s), 60 s rolling means of heart rate and movement, and a local time-of-day segment (Morning 06-12, Afternoon 12-18, Evening/Night otherwise). Rolling windows are computed within each session so they never span recording breaks.
+
+## Data Quality Considerations
+
+```{r dq}
+dq <- data.frame(
+  Issue = c("Misaligned clocks", "Different sampling rates / offset start", "Implausible values",
+            "Duplicate sensor records", "Missing values", "Irregular sampling", "Scaling",
+            "Surveys without sensor data", "Duplicate survey rows", "Surveys with no stress level", "Sparse labels"),
+  `Why it matters` = c("Survey times are local and sensor times are UTC; unmatched labels would hide any real signal.",
+                       "Signals cannot be compared second by second without a common time base.",
+                       "Off-wrist or poor-contact readings look like extreme physiology.",
+                       "Overlapping sessions repeat seconds and overweight them.",
+                       "Gaps could bias rolling features.",
+                       "Gaps break rolling windows.",
+                       "Raw accelerometer counts are not interpretable.",
+                       "A stress level with no sensor data cannot be analysed.",
+                       "Two rows for one window could double-count it or contradict each other.",
+                       "These rows cannot define the outcome.",
+                       "Only a small share of recorded time has a stress label."),
+  `How it was handled` = c("Timezone-aware conversion chosen by testing offsets per nurse; labelled data rose from 2% to 7.9% of seconds, and the best offset is now 0 h for all 15 nurses.",
+                           "All signals averaged to 1 Hz and merged on the Unix second.",
+                           "Set to NA: HR outside 30-220 bpm (none found), skin temperature outside 25-42 C (22,202 s, all below 25 C), EDA outside 0.01-60 uS (128,973 s, 2.9%, all below 0.01 uS). The upper limits never triggered.",
+                           "1,501 duplicate nurse-seconds removed; none remain.",
+                           "Under 0.15% missing per signal; gaps of 5 s or less forward-filled, longer left as NA.",
+                           "No gaps over 5 s within any session. All 609 session files loaded.",
+                           "Raw counts divided by 64 to give g; median 1.004 g at rest.",
+                           "28 of 242 distinct windows have no sensor data. They cluster by date (for example nurse 15 on 17 July 2020), which points to missing recordings and not clock error. Excluded from modelling.",
+                           "3 exact duplicates (7A rows 39 and 52; F5 rows 167 and 169; F5 rows 170 and 171). The higher row number is kept; no label lost or contradicted. Two partial overlaps (6B, E4) carry the same level in both rows.",
+                           "113 of 358 survey rows hold 'na' in the stress-level column and were dropped; the cause is not stated in the data.",
+                           "7.9% of seconds labelled (3.7% to 21.4% per nurse). Modelling uses labelled windows only."),
+  check.names = FALSE)
+kable(dq)
+```
+
+**Survey accounting.** 358 rows in the sheet; 113 without a stress level leaves 245 numeric rows; removing 3 duplicates leaves 242 distinct windows; 28 have no sensor data, leaving the 214 windows that were modelled.
+
+## Correlation heatmap
+
+Spearman correlation on 1-minute epochs, with pairwise deletion of missing values. Spearman was chosen because EDA and movement are skewed with outliers and relationships need only be monotonic. The stress row uses labelled epochs only. Every epoch counts equally here, so long survey windows weigh more than short ones; the model below weights each window once, so the two are not directly comparable.
+
+```{r heat, fig.cap = "Spearman correlation of signals, derived features and reported stress."}
+include_graphics(pick("heatmap_branded.png", "heatmap.png"))
+```
+
+- Skin temperature and EDA move together (rho 0.47), mostly reflecting wear and warmth.
+- `EDA_phasic` and `EDA_slope` are almost the same measure (rho 0.91), so only `EDA_phasic` entered the model.
+- Every correlation with reported stress is weak (|rho| of 0.13 or less; skin temperature highest).
+
+## Statistical analysis
+
+**Hypothesis.** H0: mean physiology during a survey window is unrelated to the window being rated high stress (level 2), after accounting for nurse. H1: higher arousal markers raise the odds of a high-stress window. Tests are two-sided at the 0.05 level.
+
+**Method.** Mixed-effects logistic regression with a random intercept per nurse, one row per survey window (214 windows with at least 3 one-minute epochs; 161 high stress, 53 not), predictors scaled to 1 SD. Windows last 3 to 324 minutes (median 16) and each counts once. The label is constant within a window, so the window, not the minute, is the unit of analysis. A first model on minute-level rows with a nested window effect was rejected because the random effect absorbed the outcome (ICC 1.0).
+
+**Assumption checks.** Variance inflation at most 1.45 (below 5: no collinearity concern); the model converged with no singular fit; binned residuals 80% inside bounds (95% preferred), so calibration is imperfect.
+
+```{r or}
+or <- read.csv(file.path(OUTD, "model_odds_ratios.csv"))
+or <- or[or$term != "(Intercept)", c("term", "estimate", "conf.low", "conf.high", "p.value")]
+plain <- c(EDA = "Skin conductance (EDA)", HR = "Heart rate", TEMP = "Skin temperature", acc_mag = "Movement",
+           EDA_phasic = "EDA short-term change", HR_sd60 = "Heart rate fluctuation (1-min SD)")
+or$term <- unname(plain[or$term])
+names(or) <- c("Measure", "Odds ratio per 1 SD", "95% CI low", "95% CI high", "p")
+kable(or, digits = 2, row.names = FALSE)
+```
+
+```{r forest, fig.cap = "Odds ratios per 1 SD; 1 means no effect."}
+include_graphics(pick("forest_branded.png", "forest_plot.png"))
+```
+
+**Plain-language reading.** No signal was statistically significant and every interval includes 1. Skin conductance came closest (odds 1.36 per SD, 95% CI 0.89 to 2.06). Physiology explains about 5% of the variation in whether a window was high stress (marginal R2 0.046); adding nurse identity brings it to 21% (conditional R2 0.211, ICC 0.17).
+
+## Insights
+
+1. **Wrist signals alone are weak stress markers.** Correlations with reported stress are at most 0.13, and the window-level model is null.
+2. **Who the nurse is matters more than the physiology.** About 17% of the variation in high versus lower stress windows sits between nurses, versus about 5% from the signals, which supports personalised baselines over one threshold for everyone.
+3. **Reports are skewed and sparse.** 73% of distinct usable surveys (177 of 242) report the top stress level and only 7.9% of recorded time is labelled, which limits contrast for any model.
+
+## Limitations and next steps
+
+Only 214 labelled windows (53 not high stress) for six predictors, about 8.8 events per predictor; a single report per period; a dichotomised outcome (cutoff at level 2, level 1 sensitivity not yet run); window averages lose within-window dynamics and long windows (up to 324 minutes) count once like short ones; Cook's distance flagged 13 windows but is unreliable for mixed logistic models; associations only. Most cutoffs below were not varied to test sensitivity, and the upper limits on temperature and EDA never triggered. Next: nurse-specific baselines, the survey's stressor categories (for example patient crisis or workload), and validation on new nurses.
+
+\newpage
+
+## Appendix A: Assumptions
+
+```{r assump}
+A <- data.frame(
+  ID = paste0("A", 1:21),
+  Stage = c("Loading","Loading","Loading","Loading","Loading","Loading","Loading","Survey","Survey","Survey","Labelling",
+            "Outcome","Quality","Features","Features","Features","Features","Epochs","Modelling","Modelling","Modelling"),
+  Assumption = c(
+    "One zip is one recording session; nurse ID is the filename prefix before '_'.",
+    "Each CSV: line 1 Unix start (UTC seconds), line 2 sample rate (Hz), then data; sample i is timed start + (i-1)/rate.",
+    "Each signal reduced to 1 Hz by the mean of all samples in each whole second.",
+    "Outer merge on the Unix second; HR starts 10 s after the other files, giving NA at session starts.",
+    "Movement = sqrt(x^2 + y^2 + z^2) / 64, in g; raw accelerometer values taken to be 1/64 g counts.",
+    "Duplicate (nurse, second) rows from overlapping sessions dropped, first kept (4,506,559 to 4,505,058 rows).",
+    "Unreadable zips are skipped with a console message and do not stop the run.",
+    "Only the first Excel sheet read (358 rows; the workbook has a single sheet); rows whose stress level is not numeric dropped (358 to 245).",
+    "Survey times are local hospital time (America/Chicago, daylight-saving aware) and converted to UTC; sensors are UTC.",
+    "Excel dummy date 1899-12-31 ignored (clock time only); a window ending before it starts crosses midnight.",
+    "Every sensor second inside a survey window (inclusive) inherits its stress level; on overlap the higher row number in the sheet overwrites (not the later in time).",
+    "Stress levels 0, 1, 2 are increasing intensity; 'high stress' = 2, 'not high' = 0 or 1. Coding is inferred.",
+    "Implausible readings set to NA, not deleted, to preserve timing.",
+    "Gaps of 5 s or less forward-filled within a session; longer gaps left as NA.",
+    "Rolling windows are trailing and computed within a session.",
+    "EDA_phasic is a simple proxy (EDA minus trailing 30 s mean), not a formal tonic/phasic decomposition; HR_sd60 uses the population formula.",
+    "day_part uses local Chicago hour from the first second of an epoch; computed but not used in the model.",
+    "A 1-minute epoch is the mean per floor(second/60) per session; its label is the first non-missing label in that minute.",
+    "Unit of analysis is the survey window (epochs averaged per nurse and survey); at least 3 one-minute epochs (counted whether or not every signal is present); windows with a missing predictor mean dropped.",
+    "Predictors z-scored across the 214 windows (odds ratios per 1 SD); random nurse intercept assumed normal.",
+    "EDA_slope excluded from the model; EDA_phasic kept."),
+  Justification = c(
+    "Folder and file names match survey IDs; all 15 IDs matched.",
+    "Matches the file contents inspected and the Dryad description.",
+    "HR is 1 Hz, so 1 Hz is the common resolution without inventing HR data.",
+    "Visible in the file headers.",
+    "Checked empirically: median 1.004 g at rest (range 0.39 to 2.87 g).",
+    "A second can have one reading only.",
+    "Stops one bad file halting the run; all 609 zips loaded.",
+    "The only sheet covers all 15 IDs; the 113 dropped rows hold the text 'na'.",
+    "First test, treating survey times as UTC: UTC-5 best for most nurses (summer), UTC-6 for 7E, 83, BG (after 1 Nov). After conversion, offset 0 is best for all 15 nurses (217 surveys overlap sensor data at 0 h versus 163 at +1 h); EG ties across -2 to 0 h on 4 surveys and offset 0 has the most rows.",
+    "Visible in the file structure.",
+    "A survey describes its whole window.",
+    "Of 242 distinct numeric rows: 177 level 2, 19 level 1, 46 level 0; level 1 too small to stand alone.",
+    "Keeps rolling windows aligned.",
+    "Short dropouts unlikely to change physiology; no gaps over 5 s exist.",
+    "Windows must not span recording breaks.",
+    "Fast, transparent, reproducible.",
+    "Standard shift-like segments.",
+    "Reduces autocorrelation and data size.",
+    "The label is constant within a window, so minutes are not independent.",
+    "Common scale; repeated windows per nurse.",
+    "Spearman rho 0.91 between them."),
+  Risk = c(
+    "Low.", "Time shift if the device clock drifted.", "Loses within-second detail.", "Slightly more missing HR (0.14%).",
+    "Wrong scale changes units, not correlations or odds ratios per SD.", "Duplicates may differ slightly.",
+    "None in practice (609 of 609 loaded).", "Cause of the 113 missing levels unknown; nothing assumed about them.",
+    "Hourly test only; sub-hour drift untested.", "Wrong date if typed incorrectly.",
+    "Label may hold for only part of the window. Five overlaps (about 3,300 s, under 1% of labelled time) all carry the same level in both rows.", "Different coding would blur the outcome; level 1 sensitivity not run.",
+    "Over-strict limits drop real data.", "Minimal.", "First 59 s of a session have no 60 s feature.",
+    "Cruder than model-based decomposition.", "None for conclusions.", "An epoch can straddle a window edge.",
+    "None in practice: all 214 windows have 3 or more epochs (median 16, maximum 324), so the rule removed nothing.", "Between-nurse and within-nurse changes not separated (no within-nurse centring).", "None for conclusions."),
+  check.names = FALSE)
+kable(A)
+```
+
+## Appendix B: Cutoffs and parameters
+
+```{r cut}
+Cp <- data.frame(
+  Parameter = c("Heart rate plausible range", "Skin temperature plausible range", "EDA plausible range",
+                "Gap flagged as irregular", "Forward-fill limit", "Rolling windows", "EDA slope lag", "Epoch length",
+                "Daily segments (local time)", "Survey clock", "Outcome cutoff (STRESS_CUT)", "Minimum epochs per window (MIN_EPOCHS)",
+                "Correlation method", "Significance level", "Confidence intervals", "Optimiser",
+                "Collinearity check", "Residual check", "Outlier check"),
+  Value = c("30 to 220 bpm", "25 to 42 degrees C", "0.01 to 60 uS", "more than 5 s", "5 s",
+            "HR mean 60 s, HR SD 60 s, EDA mean 30 s, movement 60 s", "10 s", "60 s",
+            "06-12, 12-18, otherwise Evening/Night", "America/Chicago to UTC", "2", "3",
+            "Spearman, pairwise deletion", "0.05, two-sided Wald z; no correction for six tests", "95%, Wald",
+            "bobyqa, Laplace approximation", "VIF below 5 acceptable (maximum 1.45)",
+            "about 95% of binned residuals inside bounds desired (observed 80%)", "Cook's distance 0.9"),
+  Basis = c("Physiological limits; no values fell outside.", "Below 25 suggests off-wrist; 22,202 s removed, all below 25; none above 42.",
+            "Below 0.01 is consistent with no skin contact (not tested); 128,973 s (2.9%) removed, all below 0.01; none above 60 or 100 uS, so the upper limit never triggered.",
+            "None found within sessions.", "See A14.", "See A15.", "Short-term change.", "See A18.", "See A17.", "See A9.",
+            "See A12.", "See A19.", "Skewed signals; monotonic relationships.", "Standard default; exploratory.",
+            "broom.mixed default.", "Stable convergence.", "performance package default.", "performance package default.",
+            "performance default; unreliable for mixed logistic models."),
+  check.names = FALSE)
+kable(Cp)
+```
+
+## Appendix C: Reconciliation and open items
+
+**Resolved by re-running every script from scratch (all outputs reproduced exactly).**
+
+1. All 609 session zips loaded; no session skipped.
+2. The survey workbook has one sheet; the 113 dropped rows contain 'na' as the stress level.
+3. The 31 surveys without labelled seconds are 28 with no sensor data plus 3 duplicate rows overwritten in overlaps.
+4. The clock offset is 0 h for all 15 nurses.
+5. The temperature and EDA upper limits never triggered; all removals were low readings.
+6. The 3-epoch rule removed no windows.
+
+**Still open.**
+
+1. The stress-level coding (A12) is inferred, and the cause of the 113 'na' rows is not stated in the data.
+2. Level 1 sensitivity (cutoff at level 1) has not been run.
+3. Whether the 28 missing recordings are device failures or upload gaps cannot be determined from the files.
