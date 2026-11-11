@@ -4,7 +4,7 @@ Reproducible R pipeline for the Sanius Health Data Analyst technical assessment.
 Empatica E4 signals (skin conductance, heart rate, skin temperature, movement) can flag the stress levels that
 hospital nurses reported. Dataset: Nurse Stress Dataset, Dryad, doi:10.5061/dryad.5hqbzkh6f.
 
-Full write-up, organised by assessment part: `docs/Nurse_Stress_Analysis_Documentation.pdf`.
+Full write-up, organised by assessment part: `docs/documentation.md`.
 Presentation: `docs/Sanius_Nurse_Stress_Findings.pptx`.
 
 ## 1. Headline result
@@ -366,4 +366,6 @@ Derived features: `HR_roll60` (heart rate, 60 s rolling mean), `HR_sd60` (heart 
 
 
 ## 14. Data source and reuse
-The dataset is not included in this repository. Obtain it from Dryad (doi:10.5061/dryad.5hqbzkh6f) and check its licence and terms before reuse. The dataset is described in Hosseini et al., "A multimodal sensor dataset for continuous stress detection of nurses in a hospital", Scientific Data 9:255 (2022), https://doi.org/10.1038/s41597-022-01361-y. Nurse IDs in the data are anonymised; do not attempt to re-identify participants.
+The dataset is not included in this repository, it was obtained from the given dryad repo link.
+
+### Author: Parneet, Nov 11, 2026
