@@ -30,20 +30,6 @@ are worth testing.
 ### Visualisations
 All figures are saved in the [`outputs/`](outputs/) folder and committed to the repository, so you can view them without running any code.
 
-| File | What it shows |
-|---|---|
-| [`outputs/heatmap_branded.png`](outputs/heatmap_branded.png) | Spearman correlation heatmap of the signals, derived features and reported stress (Sanius colours, plain-language labels) |
-| [`outputs/forest_branded.png`](outputs/forest_branded.png) | Odds ratios per 1 SD with 95% confidence intervals from the mixed-effects model (Sanius colours) |
-| [`outputs/heatmap.png`](outputs/heatmap.png) | Same heatmap, plain version produced by `correlation.R` |
-| [`outputs/forest_plot.png`](outputs/forest_plot.png) | Same forest plot, plain version produced by `stats.R` |
-| [`outputs/model_odds_ratios.csv`](outputs/model_odds_ratios.csv) | The model's odds ratios, confidence intervals and p-values as a table |
-
-![Correlation heatmap](outputs/heatmap_branded.png)
-
-![Odds ratios from the mixed-effects model](outputs/forest_branded.png)
-
-The `.rds` intermediate files in `outputs/` are not committed; `run_all.R` regenerates them and all figures.
-
 ## 3. Repository layout
 ```
 nurse_stress_analysis/
