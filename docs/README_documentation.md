@@ -1,11 +1,9 @@
 # Nurse stress and wearable signals (R)
 
-Reproducible R pipeline for the Sanius Health Data Analyst technical assessment. It asks whether wrist-worn
+Detailed reproducible R pipeline for the Sanius Health Data Analyst technical assessment. It asks whether wrist-worn
 Empatica E4 signals (skin conductance, heart rate, skin temperature, movement) can flag the stress levels that
 hospital nurses reported. Dataset: Nurse Stress Dataset, Dryad, doi:10.5061/dryad.5hqbzkh6f.
 
-Full write-up, organised by assessment part: `docs/documentation.md`.
-Presentation: `docs/Sanius_Nurse_Stress_Findings.pptx`.
 
 ## 1. Headline result
 After accounting for which nurse was recording, window-average skin conductance, heart rate, skin temperature,
@@ -42,7 +40,6 @@ nurse_stress_analysis/
   correlation.R          Part 3  Spearman heatmap
   stats.R                Part 4  mixed-effects logistic regression
   plots_branded.R        optional Sanius-colour versions of both plots
-  report.Rmd             1-2 page report with appendices (knits to report.html)
   00_inspect.R           one-off diagnostic: peek inside one zip and the survey sheet
   01b_clock_check.R      one-off diagnostic: survey-to-sensor clock offset test
   docs/                  documentation PDF and presentation
@@ -215,6 +212,7 @@ The `hatvalues` warnings that follow are expected: the hat matrix is not valid f
 Redraws the heatmap and forest plot with plain-language labels and the project colours. It prints nothing; check `outputs/heatmap_branded.png` and `outputs/forest_branded.png` (shown in the Visualisations section above).
 
 ### Step 7: `rmarkdown::render("report.Rmd")`
+Note: I am excluding this step, as I have already provided a detailed documentation and a report file.
 Knits the report with the data quality table, both figures, the odds-ratio table and the appendices.
 ```
 processing file: report.Rmd
@@ -343,10 +341,6 @@ Derived features: `HR_roll60` (heart rate, 60 s rolling mean), `HR_sd60` (heart 
 - 31 unmatched surveys = 28 with no sensor data plus 3 overwritten duplicates.
 - Clock offset is 0 h for all nurses (no anomaly for EG).
 
-**Still open**
-1. The stress-level coding (A12) is inferred; the cause of the 113 "na" rows is not stated in the data.
-2. Level 1 sensitivity (`STRESS_CUT <- 1`) not yet run.
-3. Whether the 28 missing recordings are device failures or upload gaps (not determinable from the files).
 
 
 ## 14. Data source and reuse

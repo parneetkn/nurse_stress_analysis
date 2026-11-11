@@ -9,4 +9,4 @@ for (s in steps) {
   message("== ", s, "  ", format(Sys.time(), "%H:%M:%S"))
   source(s, local = new.env()); gc()
 }
-rmarkdown::render("report.Rmd")
+#rmarkdown::render("report.Rmd")
